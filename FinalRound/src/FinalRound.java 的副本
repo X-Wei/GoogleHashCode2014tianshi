@@ -1,0 +1,135 @@
+import java.util.Collection;
+
+public class FinalRound {
+	static int N = 11348,// nb junctions
+			M = 17958,// nb street
+			T = 53000,// total time
+			C = 8,// nb cars
+			S = 4516;// index start junction
+
+	static Graph graph = new Graph();
+	static Junction[] juncs = graph.juncs;
+	static Street[] streets = graph.streets;
+
+	// static LinkedList<Junction> juncList=graph.juncList;
+	// static Collection<Street> streetList=graph.streetList;
+
+	public static void main(String[] args) {
+		TC.lectureDansFichier("paris_54000.txt");
+		TC.ecritureDansNouveauFichier("out.txt");
+		TC.println(8);
+
+		readData();
+
+		int i;
+		// ***********2. give each car cmds**************************
+		int length = 0;// total length
+		for (i = 0; i < C; i++) {
+
+			int j = S, timeLeft = T;// car-i
+
+			String cmd = "" + S + "\n";// for car-i give cmds
+			int nbpts = 1;// nb of juncs visited by car i
+
+			// car-i go!!
+			while (timeLeft > 0) {
+
+				int[] nextStep = findNext(j, timeLeft);// make the decision in findNext()
+				juncs[j].visitedTime++;
+				j = nextStep[0];// go to the next junc
+				if (j == -1)
+					break;
+				int nextst = nextStep[2];// index of next street
+				streets[nextst].visited++;// mark as visited!!
+				timeLeft -= streets[nextst].cost;
+				length += nextStep[1];
+
+				cmd += (j + "\n");
+				nbpts++;
+			}
+			TC.println(nbpts);
+			TC.print(cmd);
+
+		}// end for car-i
+
+		System.out.println("over! length= " + length);
+	}// main
+
+	static void readData() {
+		// read input to vars
+		juncs = new Junction[N];
+		streets = new Street[M];
+		TC.lireLigne();
+		int i;
+		for (i = 0; i < N; i++) {// N rows: coords of the junctions: rubbish
+			TC.lireLigne();
+			juncs[i] = new Junction(i);
+		}
+
+		for (i = 0; i < M; i++) {
+			// for street-i
+			String[] s = TC.motsDeChaine(TC.lireLigne());
+			int from = Integer.parseInt(s[0]);
+			int to = Integer.parseInt(s[1]);
+			boolean bidir = Integer.parseInt(s[2]) == 2;
+			int cost = Integer.parseInt(s[3]);
+			int len = Integer.parseInt(s[4]);
+			Street st = new Street(from, to, bidir, cost, len);
+			streets[i] = st;
+
+			// update voisin info
+			juncs[from].voisinList.add(to);
+			if (bidir) {
+				juncs[to].voisinList.add(from);
+				juncs[to].stList.add(i);
+			}
+			juncs[from].stList.add(i);
+		}
+		System.out.println("data read!");
+	}// readData()
+
+	static int[] findNext(int junc, int timeleft) {
+		// return 3 numbers: [nextJunc, len, nextSt]
+		int len = 0, nextJunc = -1, nextSt = -1;
+		int lowestCost = 100000, lowestCostJunc = -1, lowestCostSt = -1;
+		int lowestVisitedTime=100000,lowestVisitedJunc=-1,lowestVisitedSt=-1; 
+		for (int st : juncs[junc].stList) {// st
+			Street street = streets[st];
+			int otherPt=(street.from == junc ? street.to : street.from);//int the bidir case
+			if (// street.from == junc &&// make sure it's correct cmd
+			street.visited == 0 
+			&& timeleft >= street.cost 
+			&& street.len > len) {
+				len = street.len;
+				nextJunc = otherPt;
+				nextSt = st;
+			}
+			if (street.cost < lowestCost) {//find lowest cost street
+				lowestCost = street.cost;
+				lowestCostJunc = otherPt;
+				lowestCostSt = st;
+			}
+			if(juncs[otherPt].visitedTime < lowestVisitedTime){//find less visited junc
+				lowestVisitedTime=juncs[otherPt].visitedTime;
+				lowestVisitedJunc=otherPt;
+				lowestVisitedSt=st;
+			}
+		}
+		
+		if (nextJunc == -1 && lowestCost <= timeleft) {
+			// if all streets are visited: give the lowest-cost way!
+			//changed to the less visited points!
+			len = 0;
+			nextJunc = lowestVisitedJunc;
+			nextSt = lowestVisitedSt;
+		} else if (lowestCost > timeleft) {
+			System.out.println("bbbbbbbbbbb!");
+			len = 0;
+			nextJunc = -1;
+			nextSt = -1;
+		}
+
+		int[] res = { nextJunc, len, nextSt };
+		return res;
+	}// findNext
+}// class
